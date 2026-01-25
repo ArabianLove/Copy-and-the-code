@@ -9,12 +9,6 @@ function calculateTotal(items) {
     return total;
 }
 
-function getUserData(userId) {
-    // TODO: Fetch user data from API
-    var userData = null;
-    return userData;
-}
-
 function processOrder(order) {
     var items = order.items;
     var total = calculateTotal(items);
