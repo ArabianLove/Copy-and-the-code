@@ -91,6 +91,28 @@ Next lets add some code to run upon creation of the codespace!
 
 1. Verify your codespace is running, as you did previously.
 1. Verify the `codespace.md` file now has the text `Writing code upon codespace creation!`.
+
+Now let's learn how to use GitHub Copilot to analyze code - this is where "fratello" (your AI brother) helps you code better!
+
+### :keyboard: Activity: Use GitHub Copilot to analyze code
+
+1. In your codespace, open the `analyze.js` file.
+1. Review the code - it has several areas that could be improved using modern JavaScript practices.
+1. Select the `calculateTotal` function (lines 4-10).
+1. Open GitHub Copilot Chat by pressing `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Shift+I` (Mac), or click the chat icon in the left sidebar.
+1. In the Copilot Chat, type: **"Analyze this function and suggest improvements"**
+1. Review Copilot's suggestions - it should identify issues like using `var` instead of `const/let`.
+1. Ask Copilot: **"Rewrite this function using reduce"**
+1. Copy Copilot's suggestion and replace the old `calculateTotal` function with the improved version.
+1. Save your changes to `analyze.js`.
+1. From the VS Code terminal, commit and push your changes:
+
+   ```shell
+   git add analyze.js
+   git commit -m "Improved code with GitHub Copilot"
+   git push
+   ```
+
 1. Wait about 20 seconds then refresh this page (the one you're following instructions from). [GitHub Actions](https://docs.github.com/en/actions) will automatically update to the next step.
 
 <footer>

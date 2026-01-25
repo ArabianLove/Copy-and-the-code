@@ -32,7 +32,7 @@ jobs:
       current_step: ${{ steps.get_step.outputs.current_step }}
 
   on_DependabotSecurityUpdates:
-    name: On Dependabot Security Updates
+    name: On Copilot Analysis Complete
     needs: get_current_step
 
     # We will only run this action when:
@@ -60,6 +60,13 @@ jobs:
         with:
           file: ".devcontainer/devcontainer.json"
           search: "postCreateCommand"
+
+      # Verify the learner used Copilot to improve the code
+      - name: Check for Copilot code improvements
+        uses: skills/action-check-file@v1
+        with:
+          file: "analyze.js"
+          search: "reduce"
 
       # In README.md, switch step 3 for step 4.
       - name: Update to step 4
