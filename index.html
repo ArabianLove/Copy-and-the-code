@@ -11,6 +11,7 @@
       line-height: 1.5;
       background-color: #0f172a;
       color: #e2e8f0;
+      --text-secondary: #cbd5f5;
     }
 
     body {
@@ -37,7 +38,7 @@
 
     p {
       margin-top: 0;
-      color: #cbd5f5;
+      color: var(--text-secondary);
     }
 
     form {
@@ -59,6 +60,12 @@
       border: 1px solid rgba(148, 163, 184, 0.5);
       background: rgba(30, 41, 59, 0.9);
       color: inherit;
+    }
+
+    input:focus {
+      outline: 2px solid #7dd3fc;
+      outline-offset: 2px;
+      border-color: #7dd3fc;
     }
 
     button {
@@ -142,29 +149,51 @@
     const error = document.getElementById("analysis-error");
 
     const formatNumber = (value) => new Intl.NumberFormat("it-IT").format(value);
+    const RATIO_LOW_THRESHOLD = 1;
+    const RATIO_HIGH_THRESHOLD = 2;
+    const RATIO_DECIMALS = 2;
+    const ratioFormatter = new Intl.NumberFormat("it-IT", {
+      minimumFractionDigits: RATIO_DECIMALS,
+      maximumFractionDigits: RATIO_DECIMALS
+    });
 
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       error.textContent = "";
       output.replaceChildren();
 
-      const name = document.getElementById("accountName").value.trim();
-      const followers = Number.parseInt(document.getElementById("followers").value, 10);
-      const following = Number.parseInt(document.getElementById("following").value, 10);
-      const posts = Number.parseInt(document.getElementById("posts").value, 10);
-      const weeklyPosts = Number.parseInt(document.getElementById("weeklyPosts").value, 10);
+      const formData = new FormData(form);
+      const name = String(formData.get("accountName") ?? "").trim();
+      const parseNumber = (key) => {
+        const rawValue = String(formData.get(key) ?? "").trim();
+        if (!rawValue) {
+          return null;
+        }
+        const value = Number(rawValue);
+        return Number.isFinite(value) ? value : null;
+      };
+      const isValidPositiveInteger = (value) => value !== null && value >= 0 && Number.isInteger(value);
+      const followers = parseNumber("followers");
+      const following = parseNumber("following");
+      const posts = parseNumber("posts");
+      const weeklyPosts = parseNumber("weeklyPosts");
 
-      if (!name || [followers, following, posts, weeklyPosts].some((value) => Number.isNaN(value) || value < 0)) {
-        error.textContent = "Inserisci valori validi per ottenere l'analisi.";
-        output.appendChild(document.createElement("p")).textContent =
-          "I dati numerici devono essere valori pari o superiori a zero.";
+      if (!name) {
+        error.textContent = "Inserisci un nome account valido.";
         return;
       }
 
-      const ratio = following === 0 ? followers : followers / following;
+      if ([followers, following, posts, weeklyPosts].some((value) => !isValidPositiveInteger(value))) {
+        error.textContent = "Compila tutti i campi numerici con valori interi pari o superiori a zero.";
+        return;
+      }
+
+      const ratio = following === 0 ? null : followers / following;
       const tips = [];
 
-      if (followers < 100) {
+      if (followers === 0) {
+        tips.push("Il profilo è appena partito: punta su contenuti di presentazione.");
+      } else if (followers < 100) {
         tips.push("La community è agli inizi: concentra il prossimo mese su contenuti costanti.");
       } else if (followers < 1000) {
         tips.push("Buona crescita iniziale: spingi su format ricorrenti per consolidare.");
@@ -172,9 +201,13 @@
         tips.push("Hai già una base solida: lavora su collaborazioni per aumentare la portata.");
       }
 
-      if (ratio < 1) {
+      if (following === 0) {
+        tips.push("Non stai seguendo nessuno: valuta profili utili per ispirarti e crescere.");
+      } else if (ratio < RATIO_LOW_THRESHOLD) {
         tips.push("Stai seguendo più persone di quante ti seguano: valuta un pubblico più mirato.");
-      } else if (ratio >= 2) {
+      } else if (ratio < RATIO_HIGH_THRESHOLD) {
+        tips.push("Buon equilibrio tra follower e seguiti: continua a costruire autorevolezza.");
+      } else if (ratio >= RATIO_HIGH_THRESHOLD) {
         tips.push("Ottimo rapporto follower/seguiti, la tua autorevolezza è evidente.");
       }
 
@@ -192,7 +225,8 @@
       heading.textContent = `Ciao ${name}, ecco una sintesi del tuo account.`;
 
       const stats = document.createElement("p");
-      stats.textContent = `Follower: ${formatNumber(followers)} · Seguiti: ${formatNumber(following)} · Post: ${formatNumber(posts)} · Rapporto: ${ratio.toFixed(2)}`;
+      const ratioLabel = ratio === null ? "Non disponibile" : ratioFormatter.format(ratio);
+      stats.textContent = `Follower: ${formatNumber(followers)} · Seguiti: ${formatNumber(following)} · Post: ${formatNumber(posts)} · Rapporto: ${ratioLabel}`;
 
       const list = document.createElement("ul");
       tips.forEach((tip) => {
