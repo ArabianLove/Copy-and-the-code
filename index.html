@@ -1,11 +1,208 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GitHub Codespaces</title>
+  <title>Analisi del tuo account</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      background-color: #0f172a;
+      color: #e2e8f0;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 16px 48px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: min(720px, 100%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 2rem;
+    }
+
+    p {
+      margin-top: 0;
+      color: #cbd5f5;
+    }
+
+    form {
+      margin-top: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(30, 41, 59, 0.9);
+      color: inherit;
+    }
+
+    button {
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: none;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .output {
+      margin-top: 28px;
+      background: rgba(30, 41, 59, 0.6);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .output h2 {
+      margin-top: 0;
+    }
+
+    .error {
+      color: #fca5a5;
+      font-weight: 600;
+    }
+
+    ul {
+      padding-left: 18px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello from the codespace!</h1>
+  <main class="container">
+    <h1>Analisi del tuo account</h1>
+    <p>Inserisci i dati principali del profilo per ottenere un riepilogo rapido e alcuni suggerimenti.</p>
+
+    <form id="analysis-form">
+      <div>
+        <label for="accountName">Nome account</label>
+        <input id="accountName" name="accountName" type="text" placeholder="@nomeaccount" required>
+      </div>
+      <div>
+        <label for="followers">Follower</label>
+        <input id="followers" name="followers" type="number" min="0" placeholder="1200" required>
+      </div>
+      <div>
+        <label for="following">Seguiti</label>
+        <input id="following" name="following" type="number" min="0" placeholder="350" required>
+      </div>
+      <div>
+        <label for="posts">Post pubblicati</label>
+        <input id="posts" name="posts" type="number" min="0" placeholder="85" required>
+      </div>
+      <div>
+        <label for="weeklyPosts">Post settimanali</label>
+        <input id="weeklyPosts" name="weeklyPosts" type="number" min="0" placeholder="3" required>
+      </div>
+      <button type="submit">Genera analisi</button>
+    </form>
+
+    <section class="output" aria-live="polite">
+      <h2>Risultato</h2>
+      <p id="analysis-error" class="error" role="alert"></p>
+      <div id="analysis-output">
+        <p>Completa il modulo per vedere l'analisi del tuo account.</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("analysis-form");
+    const output = document.getElementById("analysis-output");
+    const error = document.getElementById("analysis-error");
+
+    const formatNumber = (value) => new Intl.NumberFormat("it-IT").format(value);
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      error.textContent = "";
+      output.replaceChildren();
+
+      const name = document.getElementById("accountName").value.trim();
+      const followers = Number.parseInt(document.getElementById("followers").value, 10);
+      const following = Number.parseInt(document.getElementById("following").value, 10);
+      const posts = Number.parseInt(document.getElementById("posts").value, 10);
+      const weeklyPosts = Number.parseInt(document.getElementById("weeklyPosts").value, 10);
+
+      if (!name || [followers, following, posts, weeklyPosts].some((value) => Number.isNaN(value) || value < 0)) {
+        error.textContent = "Inserisci valori validi per ottenere l'analisi.";
+        output.appendChild(document.createElement("p")).textContent =
+          "I dati numerici devono essere valori pari o superiori a zero.";
+        return;
+      }
+
+      const ratio = following === 0 ? followers : followers / following;
+      const tips = [];
+
+      if (followers < 100) {
+        tips.push("La community è agli inizi: concentra il prossimo mese su contenuti costanti.");
+      } else if (followers < 1000) {
+        tips.push("Buona crescita iniziale: spingi su format ricorrenti per consolidare.");
+      } else {
+        tips.push("Hai già una base solida: lavora su collaborazioni per aumentare la portata.");
+      }
+
+      if (ratio < 1) {
+        tips.push("Stai seguendo più persone di quante ti seguano: valuta un pubblico più mirato.");
+      } else if (ratio >= 2) {
+        tips.push("Ottimo rapporto follower/seguiti, la tua autorevolezza è evidente.");
+      }
+
+      if (posts < 10) {
+        tips.push("Hai pochi contenuti pubblicati: programma una serie di post introduttivi.");
+      }
+
+      if (weeklyPosts < 1) {
+        tips.push("Cerca di pubblicare almeno un contenuto a settimana per mantenere l'attenzione.");
+      } else if (weeklyPosts >= 3) {
+        tips.push("Frequenza ottima: monitora l'engagement per mantenere qualità e ritmo.");
+      }
+
+      const heading = document.createElement("p");
+      heading.textContent = `Ciao ${name}, ecco una sintesi del tuo account.`;
+
+      const stats = document.createElement("p");
+      stats.textContent = `Follower: ${formatNumber(followers)} · Seguiti: ${formatNumber(following)} · Post: ${formatNumber(posts)} · Rapporto: ${ratio.toFixed(2)}`;
+
+      const list = document.createElement("ul");
+      tips.forEach((tip) => {
+        const item = document.createElement("li");
+        item.textContent = tip;
+        list.appendChild(item);
+      });
+
+      output.append(heading, stats, list);
+    });
+  </script>
 </body>
 </html>
