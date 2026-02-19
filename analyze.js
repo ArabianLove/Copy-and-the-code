@@ -2,11 +2,7 @@
 // This code has some issues that Copilot can help identify and fix
 
 function calculateTotal(items) {
-    var total = 0;
-    for (var i = 0; i < items.length; i++) {
-        total = total + items[i].price;
-    }
-    return total;
+    return items.reduce((total, item) => total + item.price, 0);
 }
 
 function processOrder(order) {
