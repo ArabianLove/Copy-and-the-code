@@ -75,7 +75,7 @@ Next lets add some code to run upon creation of the codespace!
 1. Verify your codespace is running, as you did previously.
 1. Verify the `codespace.md` file now has the text `Writing code upon codespace creation!`.
 
-Now let's learn how to use GitHub Copilot to analyze code - this is where "fratello" (your AI brother) helps you code better!
+Now let's learn how to use GitHub Copilot to analyze code!
 
 ### :keyboard: Activity: Use GitHub Copilot to analyze code
 
