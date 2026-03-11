@@ -56,6 +56,8 @@ jobs:
 
       # Verify the postCreateCommand was added.
       - name: Check for postCreateCommand
+        id: check_postcreate
+        continue-on-error: true
         uses: skills/action-check-file@v1
         with:
           file: ".devcontainer/devcontainer.json"
@@ -63,10 +65,38 @@ jobs:
 
       # Verify the learner used Copilot to improve the code
       - name: Check for Copilot code improvements
+        id: check_reduce
+        continue-on-error: true
         uses: skills/action-check-file@v1
         with:
           file: "analyze.js"
           search: "reduce"
+
+      # Report all check results with actionable guidance when checks fail.
+      - name: Report check results
+        if: steps.check_postcreate.outcome == 'failure' || steps.check_reduce.outcome == 'failure'
+        run: |
+          echo "## ❌ Step 3 checks failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.check_postcreate.outcome }}" == "failure" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'SUMMARY'
+          ### Missing: `postCreateCommand` in `.devcontainer/devcontainer.json`
+          Add the following to `.devcontainer/devcontainer.json` before the last `}`:
+          ```jsonc
+            ,
+            "postCreateCommand": "echo '# Writing code upon codespace creation!' >> codespace.md"
+          ```
+
+          SUMMARY
+          fi
+          if [ "${{ steps.check_reduce.outcome }}" == "failure" ]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'SUMMARY'
+          ### Missing: `reduce` usage in `analyze.js`
+          Use GitHub Copilot to rewrite the `calculateTotal` function in `analyze.js` using `Array.reduce()`, then commit and push the changes.
+
+          SUMMARY
+          fi
+          exit 1
 
       # In README.md, switch step 3 for step 4.
       - name: Update to step 4
