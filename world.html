@@ -142,7 +142,7 @@
         <input id="seed" type="number" min="1" max="99999" value="42">
       </div>
       <div>
-        <label for="density">Density&nbsp;%</label>
+        <label for="density">Density (%)</label>
         <input id="density" type="number" min="10" max="90" value="48">
       </div>
       <button id="btn-generate" type="button">Generate World</button>
@@ -207,7 +207,7 @@
     /* ------------------------------------------------------------------ */
     const COLS = 180;
     const ROWS = 100;
-    const CELL = 4;                         /* pixel size of each cell   */
+    const CELL_SIZE = 4;                    /* pixel size of each cell   */
 
     function createGrid(cols, rows, fillFn) {
       const grid = new Uint8Array(cols * rows);
@@ -235,6 +235,17 @@
     /* ------------------------------------------------------------------ */
     const SMOOTH_BIRTH = 5;
     const SMOOTH_SURVIVE = 4;
+    const SMOOTH_PASSES = 6;
+
+    /* Terrain classification probabilities */
+    const MOUNTAIN_PROBABILITY = 0.12;
+    const SNOW_PROBABILITY = 0.18;        /* cumulative: 6% chance   */
+
+    /* Evolution neighbour thresholds */
+    const WATER_EXPANSION_THRESHOLD = 5;
+    const GRASS_GROWTH_THRESHOLD = 4;
+    const FOREST_SPREAD_THRESHOLD = 3;
+    const MOUNTAIN_EROSION_THRESHOLD = 6;
 
     function smoothStep(src) {
       return createGrid(COLS, ROWS, (x, y) => {
@@ -256,7 +267,6 @@
     /* ------------------------------------------------------------------ */
     function buildHeightMap(rng, densityPercent) {
       let map = generateBaseMap(rng, densityPercent);
-      const SMOOTH_PASSES = 6;
       for (let i = 0; i < SMOOTH_PASSES; i++) map = smoothStep(map);
       return map;
     }
@@ -275,8 +285,8 @@
         const landNeighbours = countNeighbours(heightMap, x, y, 1);
         if (landNeighbours === 8) {
           const r = rng();
-          if (r < 0.12) return TERRAIN.MOUNTAIN;
-          if (r < 0.18) return TERRAIN.SNOW;
+          if (r < MOUNTAIN_PROBABILITY) return TERRAIN.MOUNTAIN;
+          if (r < SNOW_PROBABILITY) return TERRAIN.SNOW;
           return TERRAIN.FOREST;
         }
 
@@ -308,13 +318,13 @@
         const grassCount = countTerrainNeighbours(world, x, y, TERRAIN.GRASS);
 
         /* Water expands slightly into sand */
-        if (cell === TERRAIN.SAND && waterCount >= 5) return TERRAIN.WATER;
+        if (cell === TERRAIN.SAND && waterCount >= WATER_EXPANSION_THRESHOLD) return TERRAIN.WATER;
 
         /* Grass grows into sand near other grass */
-        if (cell === TERRAIN.SAND && grassCount >= 4) return TERRAIN.GRASS;
+        if (cell === TERRAIN.SAND && grassCount >= GRASS_GROWTH_THRESHOLD) return TERRAIN.GRASS;
 
         /* Forest spreads into neighbouring grass */
-        if (cell === TERRAIN.GRASS && forestCount >= 3) return TERRAIN.FOREST;
+        if (cell === TERRAIN.GRASS && forestCount >= FOREST_SPREAD_THRESHOLD) return TERRAIN.FOREST;
 
         /* Snow melts into mountain if isolated */
         if (cell === TERRAIN.SNOW && countTerrainNeighbours(world, x, y, TERRAIN.SNOW) === 0) {
@@ -322,7 +332,7 @@
         }
 
         /* Mountain erodes to grass if surrounded by grass */
-        if (cell === TERRAIN.MOUNTAIN && grassCount >= 6) return TERRAIN.GRASS;
+        if (cell === TERRAIN.MOUNTAIN && grassCount >= MOUNTAIN_EROSION_THRESHOLD) return TERRAIN.GRASS;
 
         return cell;
       });
@@ -343,8 +353,8 @@
     /*  Canvas rendering                                                  */
     /* ------------------------------------------------------------------ */
     const canvas = document.getElementById("world-canvas");
-    canvas.width = COLS * CELL;
-    canvas.height = ROWS * CELL;
+    canvas.width = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
     const ctx = canvas.getContext("2d");
 
     function render(world) {
@@ -356,9 +366,9 @@
           const terrain = cellAt(world, x, y);
           const [r, g, b] = PALETTE[terrain] || [0, 0, 0];
 
-          for (let py = 0; py < CELL; py++) {
-            for (let px = 0; px < CELL; px++) {
-              const idx = ((y * CELL + py) * canvas.width + (x * CELL + px)) * 4;
+          for (let py = 0; py < CELL_SIZE; py++) {
+            for (let px = 0; px < CELL_SIZE; px++) {
+              const idx = ((y * CELL_SIZE + py) * canvas.width + (x * CELL_SIZE + px)) * 4;
               data[idx]     = r;
               data[idx + 1] = g;
               data[idx + 2] = b;
