@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Self-Generating World</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      background-color: #0f172a;
+      color: #e2e8f0;
+      --text-secondary: #cbd5f5;
+    }
+
+    body {
+      margin: 0;
+      padding: 32px 16px 48px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: min(780px, 100%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 2rem;
+    }
+
+    p {
+      margin-top: 0;
+      color: var(--text-secondary);
+    }
+
+    .controls {
+      margin-top: 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    label {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input[type="number"] {
+      width: 100px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      background: rgba(30, 41, 59, 0.9);
+      color: inherit;
+    }
+
+    input:focus {
+      outline: 2px solid #7dd3fc;
+      outline-offset: 2px;
+      border-color: #7dd3fc;
+    }
+
+    button {
+      padding: 12px 16px;
+      border-radius: 999px;
+      border: none;
+      background: #38bdf8;
+      color: #0f172a;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .canvas-wrapper {
+      margin-top: 28px;
+      background: rgba(30, 41, 59, 0.6);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      text-align: center;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      border-radius: 8px;
+      image-rendering: pixelated;
+    }
+
+    .legend {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .legend-swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .generation-info {
+      margin-top: 12px;
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Self-Generating World</h1>
+    <p>Worlds that generate themselves, where thought becomes structure and code turns into harmony.</p>
+
+    <div class="controls">
+      <div>
+        <label for="seed">Seed</label>
+        <input id="seed" type="number" min="1" max="99999" value="42">
+      </div>
+      <div>
+        <label for="density">Density (%)</label>
+        <input id="density" type="number" min="10" max="90" value="48">
+      </div>
+      <button id="btn-generate" type="button">Generate World</button>
+      <button id="btn-evolve" type="button">Evolve</button>
+      <button id="btn-auto" type="button">Auto-Evolve</button>
+    </div>
+
+    <div class="canvas-wrapper" aria-live="polite">
+      <canvas id="world-canvas" width="720" height="400"></canvas>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-swatch" style="background:#1e6f50"></span> Forest</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#4ade80"></span> Grass</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#38bdf8"></span> Water</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#1d4ed8"></span> Deep Water</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#fbbf24"></span> Sand</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#78716c"></span> Mountain</span>
+        <span class="legend-item"><span class="legend-swatch" style="background:#f1f5f9"></span> Snow</span>
+      </div>
+      <p class="generation-info" id="gen-info">Press <strong>Generate World</strong> to create a new world.</p>
+    </div>
+  </main>
+
+  <script>
+    /* ------------------------------------------------------------------ */
+    /*  Deterministic pseudo-random number generator (mulberry32)         */
+    /* ------------------------------------------------------------------ */
+    function createRNG(seed) {
+      let state = seed | 0;
+      return function next() {
+        state = (state + 0x6d2b79f5) | 0;
+        let t = Math.imul(state ^ (state >>> 15), 1 | state);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Terrain types and colour palette                                  */
+    /* ------------------------------------------------------------------ */
+    const TERRAIN = Object.freeze({
+      DEEP_WATER: 0,
+      WATER:      1,
+      SAND:       2,
+      GRASS:      3,
+      FOREST:     4,
+      MOUNTAIN:   5,
+      SNOW:       6
+    });
+
+    const PALETTE = Object.freeze({
+      [TERRAIN.DEEP_WATER]: [29, 78, 216],
+      [TERRAIN.WATER]:      [56, 189, 248],
+      [TERRAIN.SAND]:       [251, 191, 36],
+      [TERRAIN.GRASS]:      [74, 222, 128],
+      [TERRAIN.FOREST]:     [30, 111, 80],
+      [TERRAIN.MOUNTAIN]:   [120, 113, 108],
+      [TERRAIN.SNOW]:       [241, 245, 249]
+    });
+
+    /* ------------------------------------------------------------------ */
+    /*  World grid helpers                                                */
+    /* ------------------------------------------------------------------ */
+    const COLS = 180;
+    const ROWS = 100;
+    const CELL_SIZE = 4;                    /* pixel size of each cell   */
+
+    function createGrid(cols, rows, fillFn) {
+      const grid = new Uint8Array(cols * rows);
+      for (let i = 0; i < grid.length; i++) {
+        grid[i] = fillFn(i % cols, (i / cols) | 0);
+      }
+      return grid;
+    }
+
+    function cellAt(grid, x, y) {
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return -1;
+      return grid[y * COLS + x];
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Initial random map using density threshold                        */
+    /* ------------------------------------------------------------------ */
+    function generateBaseMap(rng, densityPercent) {
+      const threshold = densityPercent / 100;
+      return createGrid(COLS, ROWS, () => (rng() < threshold ? 1 : 0));
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Cellular-automata smoothing                                       */
+    /* ------------------------------------------------------------------ */
+    const SMOOTH_BIRTH = 5;
+    const SMOOTH_SURVIVE = 4;
+    const SMOOTH_PASSES = 6;
+
+    /* Terrain classification probabilities */
+    const MOUNTAIN_PROBABILITY = 0.12;
+    const SNOW_PROBABILITY = 0.18;        /* cumulative: 6% chance   */
+
+    /* Evolution neighbour thresholds */
+    const WATER_EXPANSION_THRESHOLD = 5;
+    const GRASS_GROWTH_THRESHOLD = 4;
+    const FOREST_SPREAD_THRESHOLD = 3;
+    const MOUNTAIN_EROSION_THRESHOLD = 6;
+
+    function smoothStep(src) {
+      return createGrid(COLS, ROWS, (x, y) => {
+        let alive = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            if (cellAt(src, x + dx, y + dy) === 1) alive++;
+          }
+        }
+        const current = cellAt(src, x, y);
+        if (current === 1) return alive >= SMOOTH_SURVIVE ? 1 : 0;
+        return alive >= SMOOTH_BIRTH ? 1 : 0;
+      });
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Height-map → terrain classification                               */
+    /* ------------------------------------------------------------------ */
+    function buildHeightMap(rng, densityPercent) {
+      let map = generateBaseMap(rng, densityPercent);
+      for (let i = 0; i < SMOOTH_PASSES; i++) map = smoothStep(map);
+      return map;
+    }
+
+    function classifyTerrain(heightMap, rng) {
+      return createGrid(COLS, ROWS, (x, y) => {
+        const land = cellAt(heightMap, x, y) === 1;
+        if (!land) {
+          const coastNeighbours = countNeighbours(heightMap, x, y, 1);
+          return coastNeighbours > 0 ? TERRAIN.WATER : TERRAIN.DEEP_WATER;
+        }
+
+        const waterNeighbours = countNeighbours(heightMap, x, y, 0);
+        if (waterNeighbours >= 3) return TERRAIN.SAND;
+
+        const landNeighbours = countNeighbours(heightMap, x, y, 1);
+        if (landNeighbours === 8) {
+          const r = rng();
+          if (r < MOUNTAIN_PROBABILITY) return TERRAIN.MOUNTAIN;
+          if (r < SNOW_PROBABILITY) return TERRAIN.SNOW;
+          return TERRAIN.FOREST;
+        }
+
+        return TERRAIN.GRASS;
+      });
+    }
+
+    function countNeighbours(grid, x, y, value) {
+      let count = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          if (cellAt(grid, x + dx, y + dy) === value) count++;
+        }
+      }
+      return count;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Evolution: one generation step (simple life-like rules)           */
+    /* ------------------------------------------------------------------ */
+    function evolve(world) {
+      return createGrid(COLS, ROWS, (x, y) => {
+        const cell = cellAt(world, x, y);
+
+        const waterCount = countTerrainNeighbours(world, x, y, TERRAIN.WATER)
+                         + countTerrainNeighbours(world, x, y, TERRAIN.DEEP_WATER);
+        const forestCount = countTerrainNeighbours(world, x, y, TERRAIN.FOREST);
+        const grassCount = countTerrainNeighbours(world, x, y, TERRAIN.GRASS);
+
+        /* Water expands slightly into sand */
+        if (cell === TERRAIN.SAND && waterCount >= WATER_EXPANSION_THRESHOLD) return TERRAIN.WATER;
+
+        /* Grass grows into sand near other grass */
+        if (cell === TERRAIN.SAND && grassCount >= GRASS_GROWTH_THRESHOLD) return TERRAIN.GRASS;
+
+        /* Forest spreads into neighbouring grass */
+        if (cell === TERRAIN.GRASS && forestCount >= FOREST_SPREAD_THRESHOLD) return TERRAIN.FOREST;
+
+        /* Snow melts into mountain if isolated */
+        if (cell === TERRAIN.SNOW && countTerrainNeighbours(world, x, y, TERRAIN.SNOW) === 0) {
+          return TERRAIN.MOUNTAIN;
+        }
+
+        /* Mountain erodes to grass if surrounded by grass */
+        if (cell === TERRAIN.MOUNTAIN && grassCount >= MOUNTAIN_EROSION_THRESHOLD) return TERRAIN.GRASS;
+
+        return cell;
+      });
+    }
+
+    function countTerrainNeighbours(grid, x, y, terrain) {
+      let count = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          if (cellAt(grid, x + dx, y + dy) === terrain) count++;
+        }
+      }
+      return count;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Canvas rendering                                                  */
+    /* ------------------------------------------------------------------ */
+    const canvas = document.getElementById("world-canvas");
+    canvas.width = COLS * CELL_SIZE;
+    canvas.height = ROWS * CELL_SIZE;
+    const ctx = canvas.getContext("2d");
+
+    function render(world) {
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const terrain = cellAt(world, x, y);
+          const [r, g, b] = PALETTE[terrain] || [0, 0, 0];
+
+          for (let py = 0; py < CELL_SIZE; py++) {
+            for (let px = 0; px < CELL_SIZE; px++) {
+              const idx = ((y * CELL_SIZE + py) * canvas.width + (x * CELL_SIZE + px)) * 4;
+              data[idx]     = r;
+              data[idx + 1] = g;
+              data[idx + 2] = b;
+              data[idx + 3] = 255;
+            }
+          }
+        }
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  UI wiring                                                         */
+    /* ------------------------------------------------------------------ */
+    const seedInput    = document.getElementById("seed");
+    const densityInput = document.getElementById("density");
+    const btnGenerate  = document.getElementById("btn-generate");
+    const btnEvolve    = document.getElementById("btn-evolve");
+    const btnAuto      = document.getElementById("btn-auto");
+    const genInfo      = document.getElementById("gen-info");
+
+    let currentWorld = null;
+    let generation = 0;
+    let autoInterval = null;
+
+    function updateInfo() {
+      genInfo.innerHTML = `Generation <strong>${generation}</strong> — ${COLS}×${ROWS} cells`;
+    }
+
+    function stopAuto() {
+      if (autoInterval !== null) {
+        clearInterval(autoInterval);
+        autoInterval = null;
+        btnAuto.textContent = "Auto-Evolve";
+      }
+    }
+
+    btnGenerate.addEventListener("click", () => {
+      stopAuto();
+      const seed = Math.max(1, Number(seedInput.value) || 1);
+      const density = Math.min(90, Math.max(10, Number(densityInput.value) || 48));
+      seedInput.value = seed;
+      densityInput.value = density;
+
+      const rng = createRNG(seed);
+      const heightMap = buildHeightMap(rng, density);
+      currentWorld = classifyTerrain(heightMap, rng);
+      generation = 0;
+      render(currentWorld);
+      updateInfo();
+    });
+
+    btnEvolve.addEventListener("click", () => {
+      if (!currentWorld) return;
+      stopAuto();
+      currentWorld = evolve(currentWorld);
+      generation++;
+      render(currentWorld);
+      updateInfo();
+    });
+
+    const AUTO_INTERVAL_MS = 200;
+
+    btnAuto.addEventListener("click", () => {
+      if (!currentWorld) return;
+      if (autoInterval !== null) {
+        stopAuto();
+        return;
+      }
+      btnAuto.textContent = "Stop";
+      autoInterval = setInterval(() => {
+        currentWorld = evolve(currentWorld);
+        generation++;
+        render(currentWorld);
+        updateInfo();
+      }, AUTO_INTERVAL_MS);
+    });
+
+    /* Generate the default world on load */
+    btnGenerate.click();
+  </script>
+</body>
+</html>
