@@ -58,10 +58,25 @@ jobs:
 
       # Verify the setup.sh added the file contents.
       - name: Check workflow contents, jobs
+        id: check_setup
+        continue-on-error: true
         uses: skills/action-check-file@v1
         with:
           file: "setup.sh"
           search: "install sl"
+
+      # Report check result with actionable guidance when the check fails.
+      - name: Report check results
+        if: steps.check_setup.outcome == 'failure'
+        run: |
+          echo "## ❌ Step 4 check failed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Missing: \`install sl\` in \`setup.sh\`" >> $GITHUB_STEP_SUMMARY
+          echo "Add the following to \`setup.sh\` to personalize your codespace:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo 'sudo apt-get install sl' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          exit 1
 
       # In README.md, switch step 4 for step X.
       - name: Update to step X
