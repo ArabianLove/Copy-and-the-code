@@ -75,13 +75,13 @@ Next lets add some code to run upon creation of the codespace!
 1. Verify your codespace is running, as you did previously.
 1. Verify the `codespace.md` file now has the text `Writing code upon codespace creation!`.
 
-Now let's learn how to use GitHub Copilot to analyze code - this is where "fratello" (your AI brother) helps you code better!
+Now let's learn how to use GitHub Copilot to analyze and improve code!
 
 ### :keyboard: Activity: Use GitHub Copilot to analyze code
 
 1. In your codespace, open the `analyze.js` file.
 1. Review the code - it has several areas that could be improved using modern JavaScript practices.
-1. Select the `calculateTotal` function (lines 4-10).
+1. Select the `calculateTotal` function (lines 4-9).
 1. Open GitHub Copilot Chat by pressing `Ctrl+Shift+I` (Windows/Linux) or `Cmd+Shift+I` (Mac), or click the chat icon in the left sidebar.
 1. In the Copilot Chat, type: **"Analyze this function and suggest improvements"**
 1. Review Copilot's suggestions - it should identify issues like using `var` instead of `const/let`.

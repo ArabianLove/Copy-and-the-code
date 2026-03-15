@@ -31,7 +31,7 @@ jobs:
     outputs:
       current_step: ${{ steps.get_step.outputs.current_step }}
 
-  on_DependabotSecurityUpdates:
+  on_copilot_analysis_complete:
     name: On Copilot Analysis Complete
     needs: get_current_step
 
