@@ -59,7 +59,7 @@ jobs:
         uses: skills/action-check-file@v1
         with:
           file: "index.html"
-          search: "Hello from the codespace"
+          search: "Hello from the codespace!"
 
       # In README.md, switch step 1 for step 2.
       - name: Update to step 2
